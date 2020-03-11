@@ -1,25 +1,26 @@
 import ipaddress
+import logging
 import urllib.request
 import json
+import time
 from threading import Thread
 from typing import Optional, Tuple
 
 from scapy.all import sniff
 from scapy.layers.inet import IP
 from scapy.packet import Packet
+
 import plotly.graph_objects as go
+import plotly.express as px
 
-all_ips = set()
+seen_global_ips = set()
 recent_ips = set()
-
 update_interval = 5
 
 ip_locations = {}
-# blacklist ips which have no lat and lon
 blacklisted_ips = set()
 
 global fig
-fig_name = 'globe'
 
 
 def get_lat_lon(ip: str) -> Optional[Tuple[float, float]]:
@@ -31,13 +32,17 @@ def get_lat_lon(ip: str) -> Optional[Tuple[float, float]]:
     with urllib.request.urlopen(f"https://geolocation-db.com/json/{ip}") as url:
         json_data = json.loads(url.read().decode())
 
-        if 'latitude' in json_data and 'longitude' in json_data:
-            ret = [json_data['latitude']], [json_data['longitude']]
-            ip_locations[ip] = ret
-            return ret
-        else:
+        if 'latitude' not in json_data or 'longitude' not in json_data:
             blacklisted_ips.add(ip)
             return None
+
+        lat, lon = [json_data['latitude']], [json_data['longitude']]
+        if lat == 'Not found' or lon == 'Not found':
+            blacklisted_ips.add(ip)
+            return None
+        else:
+            ip_locations[ip] = lat, lon
+            return lat[0], lon[0]
 
 
 class AddFig(Thread):
@@ -52,12 +57,15 @@ class AddFig(Thread):
         for ip in self.ips:
             res = get_lat_lon(ip)
             if res is not None:
-                lats += [res[0]]
-                lons += [res[1]]
+                lat, lon = res[0], res[1]
+                logging.info(msg=f"{ip} at {lat},{lon}")
 
-        ip_set_data = go.Scattergeo(lat=lats, lon=lons, mode='lines', line=dict(width=2, color='blue'))
-        print(ip_set_data)
-        # fig.update_layout(data=ip_set_data, filename=fig_name, fileopt='extend')
+                lats += [lat]
+                lons += [lon]
+
+        # print(ip_set_data)
+        fig.add_trace(go.Scattermapbox(mode="markers", lon=lons, lat=lats, marker={'size': 10}))
+        fig.update_layout()
 
 
 def dns_display(pkt: Packet):
@@ -67,20 +75,24 @@ def dns_display(pkt: Packet):
     dst = pkt[IP].dst
     if not ipaddress.ip_address(dst).is_global:
         return
+    elif dst in seen_global_ips:
+        return
 
-    if dst not in all_ips:
-        all_ips.add(dst)
-        recent_ips.add(dst)
+    seen_global_ips.add(dst)
+    recent_ips.add(dst)
 
-        if len(all_ips) % update_interval == 0:
-            add_fig = AddFig(recent_ips)
-            add_fig.run()
+    if len(seen_global_ips) % update_interval == 0:
+        add_fig = AddFig(recent_ips)
+        add_fig.run()
 
-            recent_ips.clear()
+        recent_ips.clear()
 
 
 if __name__ == '__main__':
-    fig = go.Figure()
+    logging.basicConfig(filename=f'{time.strftime("%Y-%m-%d-%H%M%S")}.log', level=logging.INFO)
+
+    fig = px.scatter_geo()
+    fig.update_layout(margin={'l': 1, 't': 1, 'b': 1, 'r': 1}, mapbox={'style': "open-street-map", })
     fig.show()
 
-    sniff(prn=dns_display, filter='DNS')
+    sniff(prn=dns_display)
