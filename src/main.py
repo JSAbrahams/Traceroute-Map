@@ -1,7 +1,9 @@
 import ipaddress
+import urllib.request
+import json
 from threading import Thread
+from typing import Optional, Tuple
 
-from ipwhois import IPWhois
 from scapy.all import sniff
 from scapy.layers.inet import IP
 from scapy.packet import Packet
@@ -13,8 +15,29 @@ recent_ips = set()
 update_interval = 5
 
 ip_locations = {}
+# blacklist ips which have no lat and lon
+blacklisted_ips = set()
 
 global fig
+fig_name = 'globe'
+
+
+def get_lat_lon(ip: str) -> Optional[Tuple[float, float]]:
+    if ip in blacklisted_ips:
+        return None
+    elif ip in ip_locations:
+        return ip_locations[ip]
+
+    with urllib.request.urlopen(f"https://geolocation-db.com/json/{ip}") as url:
+        json_data = json.loads(url.read().decode())
+
+        if 'latitude' in json_data and 'longitude' in json_data:
+            ret = [json_data['latitude']], [json_data['longitude']]
+            ip_locations[ip] = ret
+            return ret
+        else:
+            blacklisted_ips.add(ip)
+            return None
 
 
 class AddFig(Thread):
@@ -25,12 +48,16 @@ class AddFig(Thread):
     def run(self) -> None:
         global fig
 
+        lats, lons = [], []
         for ip in self.ips:
-            ip_whois = IPWhois(ip)
-            lookup = ip_whois.lookup_whois()
-            print(lookup)
-            for net in lookup['nets']:
-                print(net)
+            res = get_lat_lon(ip)
+            if res is not None:
+                lats += [res[0]]
+                lons += [res[1]]
+
+        ip_set_data = go.Scattergeo(lat=lats, lon=lons, mode='lines', line=dict(width=2, color='blue'))
+        print(ip_set_data)
+        # fig.update_layout(data=ip_set_data, filename=fig_name, fileopt='extend')
 
 
 def dns_display(pkt: Packet):
@@ -53,7 +80,7 @@ def dns_display(pkt: Packet):
 
 
 if __name__ == '__main__':
-    # fig = go.Figure()
-    # fig.show()
+    fig = go.Figure()
+    fig.show()
 
     sniff(prn=dns_display, filter='DNS')
