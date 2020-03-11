@@ -7,10 +7,9 @@ from threading import Thread
 from typing import Optional, Tuple
 
 from scapy.all import sniff
-from scapy.layers.inet import IP, traceroute
+from scapy.layers.inet import IP
 from scapy.packet import Packet
 
-import plotly.plotly as py
 import plotly.graph_objects as go
 
 seen_global_ips = set()
@@ -36,17 +35,15 @@ def get_lat_lon(ip: str) -> Optional[Tuple[float, float]]:
                 blacklisted_ips.add(ip)
                 return None
 
-            lat, lon = [json_data['latitude']], [json_data['longitude']]
+            lat, lon = json_data['latitude'], json_data['longitude']
             if lat == 'Not found' or lon == 'Not found':
                 blacklisted_ips.add(ip)
                 return None
             else:
                 ip_locations[ip] = lat, lon
-                logging.info(f'ip: {ip}')
-                return lat[0], lon[0]
+                return lat, lon
     except Exception as e:
-        logging.error(e)
-    finally:
+        logging.error(f'Error getting location of {ip}: {e}')
         return None
 
 
@@ -60,10 +57,12 @@ class AddFig(Thread):
 
         lats, lons = [], []
         for ip in self.ips:
-            route, unans = traceroute(ip, maxttl=32)
+            # route, unans = traceroute(ip, maxttl=32)
+            # trace = route.get_trace()
+            trace = [ip]
             msg = f'Route to {ip}: '
 
-            for traced_ip in route.get_trace():
+            for traced_ip in trace:
                 res = get_lat_lon(traced_ip)
                 if res is not None:
                     lat, lon = res[0], res[1]
@@ -90,23 +89,16 @@ def dns_display(pkt: Packet):
 
     if len(seen_global_ips) % update_interval == 0:
         add_fig = AddFig(recent_ips)
-        recent_ips.clear()
         add_fig.run()
+        recent_ips.clear()
 
 
 if __name__ == '__main__':
     fig = go.Figure(go.Scattergeo())
-    fig.update_geos(
-        visible=True,
-        resolution=110,
-        showcountries=True,
-        countrycolor="Black"
-    )
-
-    fig.update_layout(
-        margin={'l': 0, 't': 30, 'b': 0, 'r': 0},
-    )
-
+    fig.update_geos(visible=True, resolution=110, showcountries=True, countrycolor="Black")
+    fig.update_layout(margin={'l': 0, 't': 30, 'b': 0, 'r': 0})
     fig.show()
+
     logging.basicConfig(filename=f'{time.strftime("%Y-%m-%d-%H%M%S")}.log', level=logging.INFO)
+
     sniff(prn=dns_display)
