@@ -10,6 +10,7 @@ from scapy.all import sniff
 from scapy.layers.inet import IP, traceroute
 from scapy.packet import Packet
 
+import plotly.plotly as py
 import plotly.graph_objects as go
 
 seen_global_ips = set()
@@ -28,19 +29,25 @@ def get_lat_lon(ip: str) -> Optional[Tuple[float, float]]:
     elif ip in ip_locations:
         return ip_locations[ip]
 
-    with urllib.request.urlopen(f'https://geolocation-db.com/json/{ip}') as url:
-        json_data = json.loads(url.read().decode())
-        if 'latitude' not in json_data or 'longitude' not in json_data:
-            blacklisted_ips.add(ip)
-            return None
+    try:
+        with urllib.request.urlopen(f'https://geolocation-db.com/json/{ip}') as url:
+            json_data = json.loads(url.read().decode())
+            if 'latitude' not in json_data or 'longitude' not in json_data:
+                blacklisted_ips.add(ip)
+                return None
 
-        lat, lon = [json_data['latitude']], [json_data['longitude']]
-        if lat == 'Not found' or lon == 'Not found':
-            blacklisted_ips.add(ip)
-            return None
-        else:
-            ip_locations[ip] = lat, lon
-            return lat[0], lon[0]
+            lat, lon = [json_data['latitude']], [json_data['longitude']]
+            if lat == 'Not found' or lon == 'Not found':
+                blacklisted_ips.add(ip)
+                return None
+            else:
+                ip_locations[ip] = lat, lon
+                logging.info(f'ip: {ip}')
+                return lat[0], lon[0]
+    except Exception as e:
+        logging.error(e)
+    finally:
+        return None
 
 
 class AddFig(Thread):
@@ -65,7 +72,8 @@ class AddFig(Thread):
                     msg += f'{traced_ip} [{lat}, {lon}], '
 
             if len(lats) > 0:
-                fig.add_trace(go.Scattermapbox(mode='markers+lines', lon=lons, lat=lats, marker={'size': 10}))
+                map_box = go.Scattermapbox(mode='markers+lines', lon=lons, lat=lats, marker={'size': 10})
+                fig.add_trace(map_box)
                 logging.info(msg)
 
 
@@ -90,7 +98,7 @@ if __name__ == '__main__':
     fig = go.Figure(go.Scattergeo())
     fig.update_geos(
         visible=True,
-        resolution=50,
+        resolution=110,
         showcountries=True,
         countrycolor="Black"
     )
