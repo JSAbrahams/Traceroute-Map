@@ -1,3 +1,4 @@
+import ipaddress
 from threading import Thread
 
 from ipwhois import IPWhois
@@ -6,7 +7,6 @@ from scapy.layers.inet import IP
 from scapy.packet import Packet
 import plotly.graph_objects as go
 
-blacklisted_ips = set()
 all_ips = set()
 recent_ips = set()
 
@@ -33,19 +33,12 @@ class AddFig(Thread):
                 print(net)
 
 
-def is_invalid_ip(ip: str) -> bool:
-    return False
-
-
 def dns_display(pkt: Packet):
     if not pkt.haslayer(IP):
         return
 
     dst = pkt[IP].dst
-    if dst in blacklisted_ips:
-        return
-    elif is_invalid_ip(dst):
-        blacklisted_ips.add(element=dst)
+    if not ipaddress.ip_address(dst).is_global:
         return
 
     if dst not in all_ips:
