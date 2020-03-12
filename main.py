@@ -1,6 +1,7 @@
 import ipaddress
 import json
 import logging
+import threading
 import time
 import urllib.request
 from copy import deepcopy
@@ -9,7 +10,7 @@ from typing import Optional, Tuple
 
 import plotly.graph_objects as go
 from scapy.all import sniff
-from scapy.layers.inet import IP
+from scapy.layers.inet import IP, traceroute
 from scapy.packet import Packet
 
 seen_global_ips = set()
@@ -20,6 +21,19 @@ ip_locations = {}
 blacklisted_ips = set()
 
 global fig
+
+
+class StoppableThread(Thread):
+    _stop_event = threading.Event()
+
+    def __init__(self,  *args, **kwargs):
+        super(StoppableThread, self).__init__(*args, **kwargs)
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
 
 
 def get_lat_lon(ip: str) -> Optional[Tuple[float, float]]:
@@ -47,7 +61,7 @@ def get_lat_lon(ip: str) -> Optional[Tuple[float, float]]:
         return None
 
 
-class AddFig(Thread):
+class AddFig(StoppableThread):
     def __init__(self, ips: [str]):
         Thread.__init__(self)
         self.ips = ips
@@ -55,14 +69,15 @@ class AddFig(Thread):
     def run(self) -> None:
         global fig
 
-        lats, lons = [], []
         for ip in self.ips:
-            # route, unans = traceroute(ip, maxttl=32)
-            # trace = route.get_trace()
-            trace = [ip]
+            if self.stopped():
+                return
+
+            lats, lons = [], []
+            ans, err = traceroute(ip, maxttl=32, verbose=False)
             msg = f'Route to {ip}: '
 
-            for traced_ip in trace:
+            for traced_ip in ans.get_trace():
                 res = get_lat_lon(traced_ip)
                 if res is not None:
                     lat, lon = res[0], res[1]
@@ -70,35 +85,42 @@ class AddFig(Thread):
                     lons += [lon]
                     msg += f'{traced_ip} [{lat}, {lon}], '
 
-            if len(lats) > 0:
-                map_box = go.Scattergeo(mode='markers', lon=lons, lat=lats, marker={'size': 10})
-                fig.add_trace(map_box)
-                logging.info(msg)
+            logging.info(msg)
+            if len(lats) == 1:
+                fig.add_trace(go.Scattergeo(mode='markers', lon=lons, lat=lats, marker={'size': 10}))
+            elif len(lats) > 1:
+                fig.add_trace(go.Scattergeo(mode='markers+lines', lon=lons, lat=lats, marker={'size': 10}))
 
 
-def dns_display(pkt: Packet):
-    if not pkt.haslayer(IP):
-        return
-
-    dst = pkt[IP].dst
-    if not ipaddress.ip_address(dst).is_global or dst in seen_global_ips:
-        return
-
-    seen_global_ips.add(dst)
-    recent_ips.add(dst)
-
-    if len(seen_global_ips) % update_interval == 0:
-        add_fig = AddFig(deepcopy(recent_ips))
-        add_fig.start()
-        recent_ips.clear()
-
-
-class SniffThread(Thread):
+class SniffThread(StoppableThread):
     def __init__(self):
         Thread.__init__(self)
+        self.threads = []
+
+    def dns_display(self, pkt: Packet):
+        if not pkt.haslayer(IP):
+            return
+
+        dst = pkt[IP].dst
+        if not ipaddress.ip_address(dst).is_global or dst in seen_global_ips:
+            return
+
+        seen_global_ips.add(dst)
+        recent_ips.add(dst)
+
+        if len(seen_global_ips) % update_interval == 0:
+            add_fig = AddFig(deepcopy(recent_ips))
+            self.threads += [add_fig]
+            add_fig.start()
+            recent_ips.clear()
+
+    def stop(self):
+        for thread in self.threads:
+            thread.stop()
 
     def run(self) -> None:
-        Thread(target=sniff(prn=dns_display)).run()
+        while not self.stopped():
+            sniff(count=100, prn=self.dns_display)
 
 
 if __name__ == '__main__':
@@ -119,7 +141,8 @@ if __name__ == '__main__':
         break
 
     logging.basicConfig(filename=f'{time.strftime("%Y-%m-%d-%H%M%S")}.log', level=logging.INFO)
-    SniffThread().start()
+    sniff_thread = SniffThread()
+    sniff_thread.start()
 
     for i in range(sleep_amount, -1, -1):
         minutes, seconds = divmod(i, 60)
@@ -127,4 +150,9 @@ if __name__ == '__main__':
         time.sleep(1)
     print('')
 
+    print('Waiting for threads to stop...')
+    sniff_thread.stop()
+    sniff_thread.join()
+
+    print('Done!')
     fig.show()
