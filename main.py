@@ -1,16 +1,16 @@
 import ipaddress
-import logging
-import urllib.request
 import json
+import logging
 import time
+import urllib.request
+from copy import deepcopy
 from threading import Thread
 from typing import Optional, Tuple
 
+import plotly.graph_objects as go
 from scapy.all import sniff
 from scapy.layers.inet import IP
 from scapy.packet import Packet
-
-import plotly.graph_objects as go
 
 seen_global_ips = set()
 recent_ips = set()
@@ -71,7 +71,7 @@ class AddFig(Thread):
                     msg += f'{traced_ip} [{lat}, {lon}], '
 
             if len(lats) > 0:
-                map_box = go.Scattermapbox(mode='markers+lines', lon=lons, lat=lats, marker={'size': 10})
+                map_box = go.Scattergeo(mode='markers', lon=lons, lat=lats, marker={'size': 10})
                 fig.add_trace(map_box)
                 logging.info(msg)
 
@@ -88,17 +88,43 @@ def dns_display(pkt: Packet):
     recent_ips.add(dst)
 
     if len(seen_global_ips) % update_interval == 0:
-        add_fig = AddFig(recent_ips)
-        add_fig.run()
+        add_fig = AddFig(deepcopy(recent_ips))
+        add_fig.start()
         recent_ips.clear()
 
 
+class SniffThread(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+
+    def run(self) -> None:
+        Thread(target=sniff(prn=dns_display)).run()
+
+
 if __name__ == '__main__':
+    print("Traceroute Map: See where all those packets come from")
+
     fig = go.Figure(go.Scattergeo())
     fig.update_geos(visible=True, resolution=110, showcountries=True, countrycolor="Black")
     fig.update_layout(margin={'l': 0, 't': 30, 'b': 0, 'r': 0})
-    fig.show()
+
+    while True:
+        sleep_amount = int(input("Amount of seconds to track <0, 120]: "))
+        if sleep_amount <= 0:
+            print("Amount must be greater than 0")
+            continue
+        elif sleep_amount > 120:
+            print("Amount must be 120 or less")
+            continue
+        break
 
     logging.basicConfig(filename=f'{time.strftime("%Y-%m-%d-%H%M%S")}.log', level=logging.INFO)
+    SniffThread().start()
 
-    sniff(prn=dns_display)
+    for i in range(sleep_amount, -1, -1):
+        minutes, seconds = divmod(i, 60)
+        print(f'Remaining: {minutes:02d}:{seconds:02d}', end='\r')
+        time.sleep(1)
+    print('')
+
+    fig.show()
