@@ -10,6 +10,12 @@ Perhaps it can help you to get a better sense of scale and a small peek behind t
 
 We use make use of https://geolocation-db.com/ to get latitude and longitude of IP addresses.
 
+## Usage
+
+    python main.py [<duration>]
+
+If `<duration>` is not set, the default tracking duration of 20 seconds is used.
+
 ## Output
 
 Aside from the graphical overview, we also output a `*.log` file with all the IP addresses and their geographical

@@ -19,6 +19,7 @@ seen_global_ips = set()
 ip_locations = {}
 blacklisted_ips = set()
 
+default_track_duration = 20
 update_interval = 5
 marker_size = 10
 max_track_time = 120
@@ -98,7 +99,7 @@ if __name__ == '__main__':
         if len(sys.argv) >= 2:
             sleep_amount = int(sys.argv[1])
         else:
-            sleep_amount = int(input(f"Amount of seconds to track <0, {max_track_time}]: "))
+            sleep_amount = default_track_duration
 
         if sleep_amount <= 0:
             print("Amount must be greater than 0")
@@ -127,7 +128,7 @@ if __name__ == '__main__':
 
     count = 1
     for ip in seen_global_ips:
-        print(f'Calculating traces... ({count}/{len(seen_global_ips)})', end='\r')
+        print(f'Calculating traces...     ({count}/{len(seen_global_ips)})', end='\r')
 
         if isinstance(ipaddress.ip_address(ip), ipaddress.IPv6Address):
             ans, err = traceroute6(ip, maxttl=max_ttl_traceroute, verbose=False, timeout=traceroute_timeout)
