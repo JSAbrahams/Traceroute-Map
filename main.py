@@ -1,24 +1,29 @@
 import ipaddress
 import json
 import logging
+import sys
 import threading
 import time
 import urllib.request
-from copy import deepcopy
 from threading import Thread
 from typing import Optional, Tuple
 
 import plotly.graph_objects as go
 from scapy.all import sniff
 from scapy.layers.inet import IP, traceroute
+from scapy.layers.inet6 import traceroute6
 from scapy.packet import Packet
 
 seen_global_ips = set()
-recent_ips = set()
-update_interval = 5
 
 ip_locations = {}
 blacklisted_ips = set()
+
+update_interval = 5
+marker_size = 10
+max_track_time = 120
+max_ttl_traceroute = 32
+traceroute_timeout = 1
 
 global fig
 
@@ -26,7 +31,7 @@ global fig
 class StoppableThread(Thread):
     _stop_event = threading.Event()
 
-    def __init__(self,  *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(StoppableThread, self).__init__(*args, **kwargs)
 
     def stop(self):
@@ -36,91 +41,50 @@ class StoppableThread(Thread):
         return self._stop_event.is_set()
 
 
-def get_lat_lon(ip: str) -> Optional[Tuple[float, float]]:
-    if ip in blacklisted_ips:
+def get_lat_lon(ip_addr: str) -> Optional[Tuple[float, float]]:
+    if ip_addr in blacklisted_ips:
         return None
-    elif ip in ip_locations:
-        return ip_locations[ip]
+    elif ip_addr in ip_locations:
+        return ip_locations[ip_addr]
 
     try:
-        with urllib.request.urlopen(f'https://geolocation-db.com/json/{ip}') as url:
+        with urllib.request.urlopen(f'https://geolocation-db.com/json/{ip_addr}') as url:
             json_data = json.loads(url.read().decode())
             if 'latitude' not in json_data or 'longitude' not in json_data:
-                blacklisted_ips.add(ip)
+                blacklisted_ips.add(ip_addr)
                 return None
 
             lat, lon = json_data['latitude'], json_data['longitude']
             if lat == 'Not found' or lon == 'Not found':
-                blacklisted_ips.add(ip)
+                blacklisted_ips.add(ip_addr)
                 return None
             else:
-                ip_locations[ip] = lat, lon
+                ip_locations[ip_addr] = lat, lon
                 return lat, lon
     except Exception as e:
-        logging.error(f'Error getting location of {ip}: {e}')
+        logging.error(f'Error getting location of {ip_addr}: {e}')
         return None
 
 
-class AddFig(StoppableThread):
-    def __init__(self, ips: [str]):
-        Thread.__init__(self)
-        self.ips = ips
+def dns_display(pkt: Packet):
+    if not pkt.haslayer(IP):
+        return
 
-    def run(self) -> None:
-        global fig
+    dst = pkt[IP].dst
+    if not ipaddress.ip_address(dst).is_global or dst in seen_global_ips:
+        return
 
-        for ip in self.ips:
-            if self.stopped():
-                return
-
-            lats, lons = [], []
-            ans, err = traceroute(ip, maxttl=32, verbose=False)
-            msg = f'Route to {ip}: '
-
-            for traced_ip in ans.get_trace():
-                res = get_lat_lon(traced_ip)
-                if res is not None:
-                    lat, lon = res[0], res[1]
-                    lats += [lat]
-                    lons += [lon]
-                    msg += f'{traced_ip} [{lat}, {lon}], '
-
-            logging.info(msg)
-            if len(lats) == 1:
-                fig.add_trace(go.Scattergeo(mode='markers', lon=lons, lat=lats, marker={'size': 10}))
-            elif len(lats) > 1:
-                fig.add_trace(go.Scattergeo(mode='markers+lines', lon=lons, lat=lats, marker={'size': 10}))
+    seen_global_ips.add(dst)
+    logging.info(f'Sniffed: {dst}')
 
 
 class SniffThread(StoppableThread):
     def __init__(self):
         Thread.__init__(self)
-        self.threads = []
-
-    def dns_display(self, pkt: Packet):
-        if not pkt.haslayer(IP):
-            return
-
-        dst = pkt[IP].dst
-        if not ipaddress.ip_address(dst).is_global or dst in seen_global_ips:
-            return
-
-        seen_global_ips.add(dst)
-        recent_ips.add(dst)
-
-        if len(seen_global_ips) % update_interval == 0:
-            add_fig = AddFig(deepcopy(recent_ips))
-            self.threads += [add_fig]
-            add_fig.start()
-            recent_ips.clear()
-
-    def stop(self):
-        for thread in self.threads:
-            thread.stop()
 
     def run(self) -> None:
         while not self.stopped():
-            sniff(count=100, prn=self.dns_display)
+            sniff(count=100, prn=dns_display)
 
 
 if __name__ == '__main__':
@@ -131,12 +95,16 @@ if __name__ == '__main__':
     fig.update_layout(margin={'l': 0, 't': 30, 'b': 0, 'r': 0})
 
     while True:
-        sleep_amount = int(input("Amount of seconds to track <0, 120]: "))
+        if len(sys.argv) >= 2:
+            sleep_amount = int(sys.argv[1])
+        else:
+            sleep_amount = int(input(f"Amount of seconds to track <0, {max_track_time}]: "))
+
         if sleep_amount <= 0:
             print("Amount must be greater than 0")
             continue
-        elif sleep_amount > 120:
-            print("Amount must be 120 or less")
+        elif sleep_amount > max_track_time:
+            print(f"Amount must be {max_track_time} or less")
             continue
         break
 
@@ -144,15 +112,46 @@ if __name__ == '__main__':
     sniff_thread = SniffThread()
     sniff_thread.start()
 
+    total_minutes, total_seconds = divmod(sleep_amount, 60)
     for i in range(sleep_amount, -1, -1):
         minutes, seconds = divmod(i, 60)
-        print(f'Remaining: {minutes:02d}:{seconds:02d}', end='\r')
+        print(f'Tracking for {total_minutes:02d}:{total_seconds:02d} ({sleep_amount} sec), '
+              f'remaining: {minutes:02d}:{seconds:02d}', end='\r')
         time.sleep(1)
     print('')
 
-    print('Waiting for threads to stop...')
+    print('Waiting for sniffing to stop...', end='')
     sniff_thread.stop()
     sniff_thread.join()
+    print('Done')
 
-    print('Done!')
+    count = 1
+    for ip in seen_global_ips:
+        print(f'Calculating traces... ({count}/{len(seen_global_ips)})', end='\r')
+
+        if isinstance(ipaddress.ip_address(ip), ipaddress.IPv6Address):
+            ans, err = traceroute6(ip, maxttl=max_ttl_traceroute, verbose=False, timeout=traceroute_timeout)
+        else:
+            ans, err = traceroute(ip, maxttl=max_ttl_traceroute, verbose=False, timeout=traceroute_timeout)
+
+        lats, lons = [], []
+        msg = f'Route to {ip}: '
+        for traced_ip in ans.get_trace():
+            res = get_lat_lon(traced_ip)
+            if res is not None:
+                lat, lon = res[0], res[1]
+                lats += [lat]
+                lons += [lon]
+                msg += f'{traced_ip} [{lat}, {lon}], '
+
+        logging.info(msg)
+        if len(lats) == 1:
+            fig.add_trace(go.Scattergeo(mode='markers', lon=lons, lat=lats, marker={'size': marker_size}))
+        elif len(lats) > 1:
+            fig.add_trace(go.Scattergeo(mode='markers+lines', lon=lons, lat=lats, marker={'size': marker_size}))
+
+        if count == len(seen_global_ips):
+            print(f'Calculating traces...Done ({count}/{len(seen_global_ips)})')
+        count += 1
+
     fig.show()
