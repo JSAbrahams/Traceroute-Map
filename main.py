@@ -14,7 +14,7 @@ from scapy.layers.inet import IP, traceroute
 from scapy.layers.inet6 import traceroute6
 from scapy.packet import Packet
 
-seen_global_ips = set()
+seen_sources = set()
 
 ip_locations = {}
 blacklisted_ips = set()
@@ -22,7 +22,7 @@ blacklisted_ips = set()
 default_track_duration = 20
 update_interval = 5
 marker_size = 10
-max_track_time = 120
+max_track_time = 300
 max_ttl_traceroute = 32
 traceroute_timeout = 1
 
@@ -71,12 +71,12 @@ def dns_display(pkt: Packet):
     if not pkt.haslayer(IP):
         return
 
-    dst = pkt[IP].dst
-    if not ipaddress.ip_address(dst).is_global or dst in seen_global_ips:
+    src = pkt[IP].src
+    if not ipaddress.ip_address(src).is_global or src in seen_sources:
         return
 
-    seen_global_ips.add(dst)
-    logging.info(f'Sniffed: {dst}')
+    seen_sources.add(src)
+    logging.info(f'Sniffed source: {src} -> {pkt[IP].dst}')
 
 
 class SniffThread(StoppableThread):
@@ -117,33 +117,33 @@ if __name__ == '__main__':
     for i in range(sleep_amount, -1, -1):
         minutes, seconds = divmod(i, 60)
         print(f'Tracking for {total_minutes:02d}:{total_seconds:02d} ({sleep_amount} sec), '
-              f'remaining: {minutes:02d}:{seconds:02d}', end='\r')
+              f'remaining: {minutes:02d}:{seconds:02d} '
+              f'[unique source ips sniffed: {len(seen_sources)}]', end='\r')
         time.sleep(1)
     print('')
 
     print('Waiting for sniffing to stop...', end='')
     sniff_thread.stop()
     sniff_thread.join()
-    print('Done')
+    print(f'Done           [total sniffed: {len(seen_sources)}]')
 
     count = 1
-    for ip in seen_global_ips:
-        print(f'Calculating traces...     ({count}/{len(seen_global_ips)})', end='\r')
-
+    for ip in seen_sources:
+        print(f'Calculating traces...                         [{count}/{len(seen_sources)}]', end='\r')
         if isinstance(ipaddress.ip_address(ip), ipaddress.IPv6Address):
-            ans, err = traceroute6(ip, maxttl=max_ttl_traceroute, verbose=False, timeout=traceroute_timeout)
+            ans, err = traceroute6(ip, maxttl=max_ttl_traceroute, dport=53, verbose=False, timeout=traceroute_timeout)
         else:
-            ans, err = traceroute(ip, maxttl=max_ttl_traceroute, verbose=False, timeout=traceroute_timeout)
+            ans, err = traceroute(ip, maxttl=max_ttl_traceroute, dport=53, verbose=False, timeout=traceroute_timeout)
 
         lats, lons = [], []
         msg = f'Route to {ip}: '
-        for traced_ip in ans.get_trace():
-            res = get_lat_lon(traced_ip)
+        for sent_ip, received_ip in ans.res:
+            res = get_lat_lon(received_ip.src)
             if res is not None:
                 lat, lon = res[0], res[1]
                 lats += [lat]
                 lons += [lon]
-                msg += f'{traced_ip} [{lat}, {lon}], '
+                msg += f'{sent_ip.dst} [{lat}, {lon}], '
 
         logging.info(msg)
         if len(lats) == 1:
@@ -151,8 +151,8 @@ if __name__ == '__main__':
         elif len(lats) > 1:
             fig.add_trace(go.Scattergeo(mode='markers+lines', lon=lons, lat=lats, marker={'size': marker_size}))
 
-        if count == len(seen_global_ips):
-            print(f'Calculating traces...Done ({count}/{len(seen_global_ips)})')
+        if count == len(seen_sources):
+            print(f'Calculating traces...Done                     [{count}/{len(seen_sources)}]')
         count += 1
 
     fig.show()
