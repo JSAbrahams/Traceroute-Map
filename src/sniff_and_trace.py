@@ -35,10 +35,11 @@ def sniff_and_trace(args: Namespace):
         scatter_geo = trace(ip, args.timeout)
         fig.add_trace(scatter_geo)
         count += 1
-    print('')
 
     if count > 1:
-        print(f'Calculating traces...Done              [{count}/{len(sniff_thread.seen_sources)}]')
+        print(f'Calculating traces...Done              [{count - 1}/{len(sniff_thread.seen_sources)}]')
     else:
         print('No traces!')
+
+    fig.update_layout(title=f'Traceroute{"s" if count > 1 else ""} of {count} trace{"s" if count > 1 else ""}')
     fig.show()
