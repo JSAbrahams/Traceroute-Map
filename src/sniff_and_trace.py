@@ -32,8 +32,7 @@ def sniff_and_trace(args: Namespace):
     count = 1
     for ip in sniff_thread.seen_sources:
         print(f'Calculating traces...                  [{count}/{len(sniff_thread.seen_sources)}]', end='\r')
-        scatter_geo = trace(ip, args.timeout)
-        fig.add_trace(scatter_geo)
+        fig.add_trace(trace(ip, args.timeout))
         count += 1
     print('')
 

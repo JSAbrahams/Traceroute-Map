@@ -17,11 +17,14 @@ class SniffThread(Thread):
         self.seen_sources: Set[str] = set()
 
     def store_ip(self, pkt: Packet):
-        if not pkt.haslayer(IP) and not pkt.haslayer(IPv6):
+        if pkt.haslayer(IP):
+            src = pkt[IP].src
+        elif pkt.haslayer(IPv6):
+            src = pkt[IPv6].src
+        else:
             return
 
         self.sniffed += 1
-        src = pkt[IP].src
         if ipaddress.ip_address(src).is_global and src not in self.seen_sources:
             self.seen_sources.add(src)
             logging.info(f'Sniffed source: {src} -> {pkt[IP].dst}')
