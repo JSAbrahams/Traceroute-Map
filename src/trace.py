@@ -1,7 +1,7 @@
 import ipaddress
 import json
 import logging
-import urllib
+import urllib.request
 from typing import Optional, Tuple
 
 from scapy.layers.inet import traceroute
