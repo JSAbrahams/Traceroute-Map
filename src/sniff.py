@@ -18,9 +18,9 @@ class SniffThread(Thread):
 
     def store_ip(self, pkt: Packet):
         if pkt.haslayer(IP):
-            src = pkt[IP].src
+            src, dst = pkt[IP].src, pkt[IP].dst
         elif pkt.haslayer(IPv6):
-            src = pkt[IPv6].src
+            src, dst = pkt[IPv6].src, pkt[IPv6].dst
         else:
             return
 
@@ -30,7 +30,7 @@ class SniffThread(Thread):
         self.sniffed += 1
         if src not in self.seen_sources:
             self.seen_sources[src] = 1
-            logging.info(f'Sniffed source: {src} -> {pkt[IP].dst}')
+            logging.info(f'Sniffed source: {src} -> {dst}')
         else:
             self.seen_sources[src] = self.seen_sources[src] + 1
 
