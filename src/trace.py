@@ -4,10 +4,9 @@ import logging
 import urllib.request
 from typing import Optional, Tuple
 
+import plotly.graph_objects as go
 from scapy.layers.inet import traceroute
 from scapy.layers.inet6 import traceroute6
-
-import plotly.graph_objects as go
 
 ip_locations = {}
 blacklisted_ips = set()
@@ -47,7 +46,7 @@ def trace(ip: str, timeout: int) -> go.Scattergeo:
     else:
         ans, err = traceroute(ip, maxttl=max_ttl_traceroute, dport=53, verbose=False, timeout=timeout)
 
-    lats, lons = [], []
+    lats, lons, text = [], [], []
     msg = f'Route to {ip}: '
     for sent_ip, received_ip in ans.res:
         res = get_lat_lon(received_ip.src)
@@ -55,10 +54,21 @@ def trace(ip: str, timeout: int) -> go.Scattergeo:
             lat, lon = res[0], res[1]
             lats += [lat]
             lons += [lon]
+            text += [received_ip.src]
             msg += f'{sent_ip.dst} [{lat}, {lon}], '
+
+    if len(lats) == 0:
+        res = get_lat_lon(ip)
+        if res is not None:
+            lat, lon = res[0], res[1]
+            lats += [lat]
+            lons += [lon]
+            text += [received_ip.src]
 
     logging.info(msg)
     if len(lats) == 1:
-        return go.Scattergeo(mode='markers', lon=lons, lat=lats, marker={'size': marker_size})
+        return go.Scattergeo(mode='markers', lon=lons, lat=lats, text=[],
+                             marker={'size': marker_size, 'symbol': 'square'})
     else:
-        return go.Scattergeo(mode='markers+lines', lon=lons, lat=lats, marker={'size': marker_size})
+        return go.Scattergeo(mode='markers+lines', lon=lons, lat=lats, text=[],
+                             marker={'size': marker_size, 'symbol': 'square'})
