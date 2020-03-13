@@ -40,7 +40,7 @@ def get_lat_lon(ip_addr: str) -> Optional[Tuple[float, float]]:
         return None
 
 
-def trace(ip: str, timeout: int) -> go.Scattergeo:
+def trace(ip: str, hits: int, timeout: int) -> go.Scattergeo:
     if isinstance(ipaddress.ip_address(ip), ipaddress.IPv6Address):
         ans, err = traceroute6(ip, maxttl=max_ttl_traceroute, dport=53, verbose=False, timeout=timeout)
     else:
@@ -63,12 +63,14 @@ def trace(ip: str, timeout: int) -> go.Scattergeo:
             lat, lon = res[0], res[1]
             lats += [lat]
             lons += [lon]
-            text += [received_ip.src]
+            text += [ip]
 
     logging.info(msg)
     if len(lats) == 1:
-        return go.Scattergeo(mode='markers', lon=lons, lat=lats, text=[],
+        return go.Scattergeo(mode='markers', lon=lons, lat=lats, text=text,
+                             line={'width': hits / 10},
                              marker={'size': marker_size, 'symbol': 'square'})
     else:
-        return go.Scattergeo(mode='markers+lines', lon=lons, lat=lats, text=[],
+        return go.Scattergeo(mode='markers+lines', lon=lons, lat=lats, text=text,
+                             line={'width': hits / 10},
                              marker={'size': marker_size, 'symbol': 'square'})

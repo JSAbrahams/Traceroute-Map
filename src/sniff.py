@@ -1,7 +1,7 @@
 import ipaddress
 import logging
 from threading import Thread
-from typing import Set
+from typing import Dict
 
 from scapy.all import sniff
 from scapy.layers.inet import IP
@@ -14,7 +14,7 @@ class SniffThread(Thread):
         Thread.__init__(self)
         self.sniffed: int = 0
         self.duration = duration
-        self.seen_sources: Set[str] = set()
+        self.seen_sources: Dict[str, int] = {}
 
     def store_ip(self, pkt: Packet):
         if pkt.haslayer(IP):
@@ -24,10 +24,15 @@ class SniffThread(Thread):
         else:
             return
 
+        if not ipaddress.ip_address(src).is_global:
+            return
+
         self.sniffed += 1
-        if ipaddress.ip_address(src).is_global and src not in self.seen_sources:
-            self.seen_sources.add(src)
+        if src not in self.seen_sources:
+            self.seen_sources[src] = 1
             logging.info(f'Sniffed source: {src} -> {pkt[IP].dst}')
+        else:
+            self.seen_sources[src] = self.seen_sources[src] + 1
 
     def run(self) -> None:
         sniff(prn=self.store_ip, timeout=self.duration)

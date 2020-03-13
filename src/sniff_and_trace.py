@@ -30,9 +30,9 @@ def sniff_and_trace(args: Namespace):
     print('')
 
     count = 1
-    for ip in sniff_thread.seen_sources:
+    for ip, hits in sniff_thread.seen_sources.items():
         print(f'Calculating traces...                  [{count}/{len(sniff_thread.seen_sources)}]', end='\r')
-        fig.add_trace(trace(ip, args.timeout))
+        fig.add_trace(trace(ip, hits, args.timeout))
         count += 1
 
     if count > 1:
