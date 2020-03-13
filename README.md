@@ -8,9 +8,18 @@ We use make use of https://geolocation-db.com/ to get latitude and longitude of 
 
 ## Usage
 
-    python main.py [<duration>]
+    traceroute_map.py [-h] [-p PROJECTION] [-t TIMEOUT] [-d DURATION]
 
-If `<duration>` is not set, the default tracking duration of 20 seconds is used.
+    Map traces
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -p PROJECTION, --projection PROJECTION
+                            Type of map projection
+      -t TIMEOUT, --timeout TIMEOUT
+                            Traceroute timeout
+      -d DURATION, --duration DURATION
+                            Amount of seconds to track traffic
 
 ## Output
 
