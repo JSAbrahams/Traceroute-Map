@@ -19,7 +19,7 @@ cache_name = "ip_loc_cache.txt"
 
 class Trace:
     def __init__(self):
-        self.ip_locations: Dict[str, Tuple[str, int, int]] = {}
+        self.ip_locations: Dict[str, Tuple[int, int]] = {}
         self.blacklisted_ips: Set[str] = set()
 
     def read_from_file(self) -> None:
@@ -27,8 +27,8 @@ class Trace:
             try:
                 with open(cache_name, 'r') as cache:
                     for line in cache.readlines():
-                        ip, name, lat, lon = line.split(',')
-                        self.ip_locations[ip] = name, lat, lon
+                        ip, lat, lon = line.split(',')
+                        self.ip_locations[ip] = lat, lon
             except Exception as e:
                 logging.error(f'Unable to load cache: {e}')
 
@@ -40,7 +40,7 @@ class Trace:
         except Exception as e:
             logging.error(f'Unable to write to cache: {e}')
 
-    def get_lat_lon(self, ip_addr: str) -> Optional[Tuple[str, float, float]]:
+    def get_lat_lon(self, ip_addr: str) -> Optional[Tuple[float, float]]:
         if ip_addr in self.blacklisted_ips:
             return None
         elif ip_addr in self.ip_locations:
@@ -58,14 +58,8 @@ class Trace:
                     self.blacklisted_ips.add(ip_addr)
                     return None
                 else:
-                    try:
-                        name, _, _ = socket.gethostbyaddr(ip_addr)
-                    except Exception as e:
-                        logging.error(f'Failed to get hostname of {ip_addr}: e')
-                        name = ''
-
-                    self.ip_locations[ip_addr] = name, lat, lon
-                    return name, lat, lon
+                    self.ip_locations[ip_addr] = lat, lon
+                    return lat, lon
         except Exception as e:
             logging.error(f'Error getting location of {ip_addr}: {e}')
             return None
@@ -82,19 +76,17 @@ class Trace:
         for sent_ip, received_ip in ans.res:
             res = self.get_lat_lon(received_ip.src)
             if res is not None:
-                this_name, lat, lon = res[0], res[1], res[2]
+                lat, lon = res[0], res[1]
                 lats += [lat]
                 lons += [lon]
                 text += [received_ip.src]
                 msg += f'{sent_ip.dst} [{lat}, {lon}], '
-                received.add(received_ip)
-                if received_ip == ip:
-                    name = this_name
+                received.add(received_ip.src)
 
         if ip not in received:
             res = self.get_lat_lon(ip)
             if res is not None:
-                name, lat, lon = res[0], res[1], res[2]
+                lat, lon = res[0], res[1]
                 lats += [lat]
                 lons += [lon]
                 text += [ip]
@@ -105,7 +97,14 @@ class Trace:
         else:
             mode = 'markers+lines'
 
+        try:
+            name = {socket.gethostbyaddr(ip)}
+            name = f'{name} '
+        except Exception as e:
+            logging.error(f'Failed to get hostname of {ip}: e')
+            name = ''
+
         return go.Scattergeo(mode=mode, lon=lons, lat=lats, text=text,
-                             name=f'{name} [{ip}, {hits} packets, {byte_count} bytes]',
+                             name=f'{name}[{ip}, {hits} packets, {byte_count} bytes]',
                              line={'width': int(math.log(byte_count))},
                              marker={'size': marker_size, 'symbol': 'square'})
