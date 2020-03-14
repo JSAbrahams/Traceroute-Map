@@ -3,6 +3,7 @@ import json
 import logging
 import math
 import os
+import socket
 import urllib.request
 from typing import Optional, Tuple, Dict, Set
 
@@ -18,7 +19,7 @@ cache_name = "ip_loc_cache.txt"
 
 class Trace:
     def __init__(self):
-        self.ip_locations: Dict[str, Tuple[int, int]] = {}
+        self.ip_locations: Dict[str, Tuple[str, int, int]] = {}
         self.blacklisted_ips: Set[str] = set()
 
     def read_from_file(self) -> None:
@@ -26,20 +27,20 @@ class Trace:
             try:
                 with open(cache_name, 'r') as cache:
                     for line in cache.readlines():
-                        ip, lat, lon = line.split(',')
-                        self.ip_locations[ip] = lat, lon
+                        ip, name, lat, lon = line.split(',')
+                        self.ip_locations[ip] = name, lat, lon
             except Exception as e:
                 logging.error(f'Unable to load cache: {e}')
 
     def write_to_file(self) -> None:
         try:
             with open(cache_name, 'w') as cache:
-                for ip, (lat, lon) in self.ip_locations.items():
-                    cache.write(f'{ip}, {lat}, {lon}\n')
+                for ip, (name, lat, lon) in self.ip_locations.items():
+                    cache.write(f'{ip}, {name}, {lat}, {lon}\n')
         except Exception as e:
             logging.error(f'Unable to write to cache: {e}')
 
-    def get_lat_lon(self, ip_addr: str) -> Optional[Tuple[float, float]]:
+    def get_lat_lon(self, ip_addr: str) -> Optional[Tuple[str, float, float]]:
         if ip_addr in self.blacklisted_ips:
             return None
         elif ip_addr in self.ip_locations:
@@ -57,8 +58,14 @@ class Trace:
                     self.blacklisted_ips.add(ip_addr)
                     return None
                 else:
-                    self.ip_locations[ip_addr] = lat, lon
-                    return lat, lon
+                    try:
+                        name, _, _ = socket.gethostbyaddr(ip_addr)
+                    except Exception as e:
+                        logging.error(f'Failed to get hostname of {ip_addr}: e')
+                        name = ''
+
+                    self.ip_locations[ip_addr] = name, lat, lon
+                    return name, lat, lon
         except Exception as e:
             logging.error(f'Error getting location of {ip_addr}: {e}')
             return None
@@ -69,21 +76,25 @@ class Trace:
         else:
             ans, err = traceroute(ip, maxttl=max_ttl_traceroute, dport=53, verbose=False, timeout=timeout)
 
-        lats, lons, text = [], [], []
+        lats, lons, text, received = [], [], [], set()
         msg = f'Route to {ip}: '
+        name = ''
         for sent_ip, received_ip in ans.res:
             res = self.get_lat_lon(received_ip.src)
             if res is not None:
-                lat, lon = res[0], res[1]
+                this_name, lat, lon = res[0], res[1], res[2]
                 lats += [lat]
                 lons += [lon]
                 text += [received_ip.src]
                 msg += f'{sent_ip.dst} [{lat}, {lon}], '
+                received.add(received_ip)
+                if received_ip == ip:
+                    name = this_name
 
-        if len(lats) == 0:
+        if ip not in received:
             res = self.get_lat_lon(ip)
             if res is not None:
-                lat, lon = res[0], res[1]
+                name, lat, lon = res[0], res[1], res[2]
                 lats += [lat]
                 lons += [lon]
                 text += [ip]
@@ -94,6 +105,7 @@ class Trace:
         else:
             mode = 'markers+lines'
 
-        return go.Scattergeo(mode=mode, lon=lons, lat=lats, text=text, name=f'{ip}: {hits} packets, {byte_count} bytes',
+        return go.Scattergeo(mode=mode, lon=lons, lat=lats, text=text,
+                             name=f'{name} [{ip}, {hits} packets, {byte_count} bytes]',
                              line={'width': int(math.log(byte_count))},
                              marker={'size': marker_size, 'symbol': 'square'})

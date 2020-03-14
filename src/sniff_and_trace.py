@@ -32,7 +32,7 @@ def sniff_and_trace(args: Namespace):
 
     count = 1
     trace = Trace()
-    if args.clear_cache:
+    if not args.clean:
         trace.read_from_file()
 
     for ip, (hits, byte_count) in sniff_thread.seen_sources.items():
