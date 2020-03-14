@@ -9,6 +9,7 @@ We use make use of https://geolocation-db.com/ to get latitude and longitude of 
 ## Usage
 
     traceroute_map.py [-h] [-p PROJECTION] [-t TIMEOUT] [-d DURATION]
+                         [--clean]
 
     Map traces
 
@@ -20,6 +21,9 @@ We use make use of https://geolocation-db.com/ to get latitude and longitude of 
                             Traceroute timeout
       -d DURATION, --duration DURATION
                             Amount of seconds to track traffic
+      --clean               clear cache of ip latitudes and longitudes and look
+                            them up again
+
 
 ## Output
 
