@@ -72,16 +72,17 @@ class Trace:
 
         lats, lons, text, received = [], [], [], set()
         msg = f'Route to {ip}: '
-        name = ''
+        count = 1
         for sent_ip, received_ip in ans.res:
             res = self.get_lat_lon(received_ip.src)
             if res is not None:
                 lat, lon = res[0], res[1]
                 lats += [lat]
                 lons += [lon]
-                text += [received_ip.src]
+                text += [f'hop {count}: {received_ip.src}']
                 msg += f'{sent_ip.dst} [{lat}, {lon}], '
                 received.add(received_ip.src)
+                count += 1
 
         if ip not in received:
             res = self.get_lat_lon(ip)
@@ -89,16 +90,13 @@ class Trace:
                 lat, lon = res[0], res[1]
                 lats += [lat]
                 lons += [lon]
-                text += [ip]
+                text += [f'hop {count}: {ip}']
 
         logging.info(msg)
-        if len(lats) == 1:
-            mode = 'markers'
-        else:
-            mode = 'markers+lines'
+        mode = 'markers' if len(lats) == 1 else 'markers+lines'
 
         try:
-            name = {socket.gethostbyaddr(ip)}
+            name, _, _ = socket.gethostbyaddr(ip)
             name = f'{name} '
         except Exception as e:
             logging.error(f'Failed to get hostname of {ip}: e')
