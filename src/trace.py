@@ -104,5 +104,5 @@ class Trace:
 
         return go.Scattergeo(mode=mode, lon=lons, lat=lats, text=text,
                              name=f'{name}[{ip}, {hits} packets, {byte_count} bytes]',
-                             line={'width': int(math.log(byte_count))},
+                             line={'width': int(math.log(byte_count)) / 5},
                              marker={'size': marker_size, 'symbol': 'square'})
