@@ -62,7 +62,7 @@ class Trace:
                     self.ip_locations[ip_addr] = lat, lon
                     return lat, lon
         except Exception as e:
-            logging.error(f'Error getting location of {ip_addr}: {e}')
+            logging.warning(f'Unable to determine location of {ip_addr}: {e}')
             return None
 
     def trace(self, ip: str, hits: int, byte_count: int, timeout: int) -> go.Scattergeo:
@@ -100,7 +100,7 @@ class Trace:
             name, _, _ = socket.gethostbyaddr(ip)
             name = f'{name} | '
         except Exception as e:
-            logging.error(f'Failed to get hostname of {ip}: e')
+            logging.warning(f'Failed to get hostname of {ip}: {e}')
             name = ''
 
         return go.Scattergeo(mode=mode, lon=lons, lat=lats, text=text,

@@ -10,16 +10,15 @@ from hurry.filesize import size
 update_interval = 5
 
 
-def sniff_and_trace(args: Namespace):
+def sniff_and_trace(projection_type: str, timeout: int, duration: int, clean: bool):
     fig = go.Figure(go.Scattergeo())
-    fig.update_geos(projection_type=args.projection, visible=True, resolution=110, showcountries=True,
+    fig.update_geos(projection_type=projection_type, visible=True, resolution=110, showcountries=True,
                     countrycolor="Black")
     fig.update_layout(margin={'l': 0, 't': 30, 'b': 0, 'r': 0})
 
-    sniff_thread = SniffThread(args.duration)
+    sniff_thread = SniffThread(duration)
     sniff_thread.start()
 
-    duration = args.duration
     total_minutes, total_seconds = divmod(duration, 60)
     print(f'Tracking for {total_minutes:02d}:{total_seconds:02d} ({duration:,} sec)')
 
@@ -33,12 +32,12 @@ def sniff_and_trace(args: Namespace):
 
     count = 1
     trace = Trace()
-    if not args.clean:
+    if not clean:
         trace.read_from_file()
 
     for ip, (hits, byte_count) in sniff_thread.seen_sources.items():
         print(f'Calculating traces...                  [{count}/{len(sniff_thread.seen_sources)}]', end='\r')
-        fig.add_trace(trace.trace(ip, hits, byte_count, args.timeout))
+        fig.add_trace(trace.trace(ip, hits, byte_count, timeout))
         count += 1
 
     trace.write_to_file()
@@ -48,7 +47,7 @@ def sniff_and_trace(args: Namespace):
     else:
         print('No traces!')
 
-    fig.update_layout(title=f'Traceroute{"s" if count > 1 else ""} of {count:,} trace{"s" if count > 1 else ""}:'
+    fig.update_layout(title=f'Traceroute of {count:,} trace{"s" if count > 1 else ""}:'
                             f'{sniff_thread.total_bytes:,} bytes ({size(sniff_thread.total_bytes)}) '
                             f'during {duration:,} seconds ({total_minutes:02d}:{total_seconds:02d})')
     fig.show()
