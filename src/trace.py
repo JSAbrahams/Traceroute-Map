@@ -35,8 +35,8 @@ class Trace:
     def write_to_file(self) -> None:
         try:
             with open(cache_name, 'w') as cache:
-                for ip, (name, lat, lon) in self.ip_locations.items():
-                    cache.write(f'{ip}, {name}, {lat}, {lon}\n')
+                for ip, (lat, lon) in self.ip_locations.items():
+                    cache.write(f'{ip}, {lat}, {lon}\n')
         except Exception as e:
             logging.error(f'Unable to write to cache: {e}')
 
