@@ -62,10 +62,10 @@ class Trace:
                     self.ip_locations[ip_addr] = lat, lon
                     return lat, lon
         except Exception as e:
-            logging.error(f'Error getting location of {ip_addr}: {e}')
+            logging.warning(f'Unable to determine location of {ip_addr}: {e}')
             return None
 
-    def trace(self, ip: str, hits: int, byte_count: int, timeout: int) -> go.Scattergeo:
+    def trace(self, ip: str, hits: int, byte_count: int, timeout: int, display_name: bool) -> go.Scattergeo:
         if isinstance(ipaddress.ip_address(ip), ipaddress.IPv6Address):
             ans, err = traceroute6(ip, maxttl=max_ttl_traceroute, dport=53, verbose=False, timeout=timeout)
         else:
@@ -80,7 +80,7 @@ class Trace:
                 lat, lon = res[0], res[1]
                 lats += [lat]
                 lons += [lon]
-                text += [f'hop {count}: {received_ip.src}']
+                text += [f'hop {count}: {received_ip.src if display_name else ""}']
                 msg += f'{sent_ip.dst} [{lat}, {lon}], '
                 received.add(received_ip.src)
                 count += 1
@@ -96,14 +96,18 @@ class Trace:
         logging.info(msg)
         mode = 'markers' if len(lats) == 1 else 'markers+lines'
 
-        try:
-            name, _, _ = socket.gethostbyaddr(ip)
-            name = f'{name} | '
-        except Exception as e:
-            logging.error(f'Failed to get hostname of {ip}: e')
+        if display_name:
+            try:
+                name, _, _ = socket.gethostbyaddr(ip)
+                host_addr = f'{name} | '
+            except Exception as e:
+                logging.warning(f'Failed to get hostname of {ip}: {e}')
+                host_addr = ''
+            name = f'{host_addr} {ip}<br>'
+        else:
             name = ''
 
         return go.Scattergeo(mode=mode, lon=lons, lat=lats, text=text,
-                             name=f'{name}{ip}<br>{hits} packets, {byte_count} bytes ({size(byte_count)})',
+                             name=f'{name}{hits} packets, {size(byte_count)} ({byte_count} bytes)',
                              line={'width': int(math.log(byte_count)) / 2},
                              marker={'size': marker_size, 'symbol': 'square'})

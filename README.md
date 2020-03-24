@@ -16,14 +16,17 @@ We use make use of https://geolocation-db.com/ to get latitude and longitude of 
     optional arguments:
       -h, --help            show this help message and exit
       -p PROJECTION, --projection PROJECTION
-                            Type of map projection
+                            type of map projection
       -t TIMEOUT, --timeout TIMEOUT
-                            Traceroute timeout
+                            traceroute timeout
       -d DURATION, --duration DURATION
-                            Amount of seconds to track traffic
+                            amount of seconds to track traffic
+      -l LOG_LEVEL, --log-level LOG_LEVEL
+                            log level, on of: 'debug', 'info', 'warning', 'error',
+                            'critical'
+      --display-name        display names of traces
       --clean               clear cache of ip latitudes and longitudes and look
                             them up again
-
 
 ## Output
 
