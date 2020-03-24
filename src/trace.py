@@ -98,12 +98,13 @@ class Trace:
 
         try:
             name, _, _ = socket.gethostbyaddr(ip)
-            name = f'{name} | '
+            host_addr = f'{name} | '
         except Exception as e:
             logging.warning(f'Failed to get hostname of {ip}: {e}')
             name = ''
 
+        name = f'{host_addr} {ip}<br>' if display_name else ''
         return go.Scattergeo(mode=mode, lon=lons, lat=lats, text=text,
-                             name=f'{name}[{ip}, {hits} packets, {byte_count} bytes ({size(byte_count)})]' if display_name else '',
-                             line={'width': int(math.log(byte_count)) / 5},
+                             name=f'{name}{hits} packets, {size(byte_count)} ({byte_count} bytes)]',
+                             line={'width': int(math.log(byte_count)) / 2},
                              marker={'size': marker_size, 'symbol': 'square'})
