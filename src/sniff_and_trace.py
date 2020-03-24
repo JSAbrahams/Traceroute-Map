@@ -10,7 +10,7 @@ from hurry.filesize import size
 update_interval = 5
 
 
-def sniff_and_trace(projection_type: str, timeout: int, duration: int, clean: bool):
+def sniff_and_trace(projection_type: str, timeout: int, duration: int, clean: bool, display_name: bool):
     fig = go.Figure(go.Scattergeo())
     fig.update_geos(projection_type=projection_type, visible=True, resolution=110, showcountries=True,
                     countrycolor="Black")
@@ -37,7 +37,7 @@ def sniff_and_trace(projection_type: str, timeout: int, duration: int, clean: bo
 
     for ip, (hits, byte_count) in sniff_thread.seen_sources.items():
         print(f'Calculating traces...                  [{count}/{len(sniff_thread.seen_sources)}]', end='\r')
-        fig.add_trace(trace.trace(ip, hits, byte_count, timeout))
+        fig.add_trace(trace.trace(ip, hits, byte_count, timeout, display_name))
         count += 1
 
     trace.write_to_file()

@@ -65,7 +65,7 @@ class Trace:
             logging.warning(f'Unable to determine location of {ip_addr}: {e}')
             return None
 
-    def trace(self, ip: str, hits: int, byte_count: int, timeout: int) -> go.Scattergeo:
+    def trace(self, ip: str, hits: int, byte_count: int, timeout: int, display_name: bool) -> go.Scattergeo:
         if isinstance(ipaddress.ip_address(ip), ipaddress.IPv6Address):
             ans, err = traceroute6(ip, maxttl=max_ttl_traceroute, dport=53, verbose=False, timeout=timeout)
         else:
@@ -104,6 +104,6 @@ class Trace:
             name = ''
 
         return go.Scattergeo(mode=mode, lon=lons, lat=lats, text=text,
-                             name=f'{name}{ip}<br>{hits} packets, {byte_count} bytes ({size(byte_count)})',
-                             line={'width': int(math.log(byte_count)) / 2},
+                             name=f'{name}[{ip}, {hits} packets, {byte_count} bytes ({size(byte_count)})]' if display_name else '',
+                             line={'width': int(math.log(byte_count)) / 5},
                              marker={'size': marker_size, 'symbol': 'square'})
