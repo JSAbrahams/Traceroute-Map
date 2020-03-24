@@ -10,6 +10,7 @@ from typing import Optional, Tuple, Dict, Set
 import plotly.graph_objects as go
 from scapy.layers.inet import traceroute
 from scapy.layers.inet6 import traceroute6
+from hurry.filesize import size
 
 marker_size = 10
 max_ttl_traceroute = 32
@@ -97,12 +98,12 @@ class Trace:
 
         try:
             name, _, _ = socket.gethostbyaddr(ip)
-            name = f'{name} '
+            name = f'{name} | '
         except Exception as e:
             logging.error(f'Failed to get hostname of {ip}: e')
             name = ''
 
         return go.Scattergeo(mode=mode, lon=lons, lat=lats, text=text,
-                             name=f'{name}[{ip}, {hits} packets, {byte_count} bytes]',
+                             name=f'{name}{ip}<br>{hits} packets, {byte_count} bytes ({size(byte_count)})',
                              line={'width': int(math.log(byte_count)) / 2},
                              marker={'size': marker_size, 'symbol': 'square'})

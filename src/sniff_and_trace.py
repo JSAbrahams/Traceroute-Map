@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 
 from src.sniff import SniffThread
 from src.trace import Trace
+from hurry.filesize import size
 
 update_interval = 5
 
@@ -26,7 +27,7 @@ def sniff_and_trace(args: Namespace):
         minutes, seconds = divmod(i, 60)
         print(f'Remaining: {minutes:02d}:{seconds:02d} [unique source ips sniffed: {len(sniff_thread.seen_sources):,},'
               f' total: {sniff_thread.sniffed:,},'
-              f' bytes: {sniff_thread.total_bytes:,}]', end='\r')
+              f' bytes: {sniff_thread.total_bytes:,} ({size(sniff_thread.total_bytes)})]', end='\r')
         time.sleep(1)
     print('')
 
@@ -48,6 +49,6 @@ def sniff_and_trace(args: Namespace):
         print('No traces!')
 
     fig.update_layout(title=f'Traceroute{"s" if count > 1 else ""} of {count:,} trace{"s" if count > 1 else ""}:'
-                            f'{sniff_thread.total_bytes:,} bytes during {duration:,} seconds '
-                            f'({total_minutes:02d}:{total_seconds:02d})')
+                            f'{sniff_thread.total_bytes:,} bytes ({size(sniff_thread.total_bytes)}) '
+                            f'during {duration:,} seconds ({total_minutes:02d}:{total_seconds:02d})')
     fig.show()
