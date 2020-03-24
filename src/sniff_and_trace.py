@@ -26,7 +26,7 @@ def sniff_and_trace(projection_type: str, timeout: int, duration: int, clean: bo
         minutes, seconds = divmod(i, 60)
         print(f'Remaining: {minutes:02d}:{seconds:02d} [unique source ips sniffed: {len(sniff_thread.seen_sources):,},'
               f' total: {sniff_thread.sniffed:,},'
-              f' bytes: {sniff_thread.total_bytes:,} ({size(sniff_thread.total_bytes)})]', end='\r')
+              f' {size(sniff_thread.total_bytes)} ({sniff_thread.total_bytes:,} bytes)]', end='\r')
         time.sleep(1)
     print('')
 
