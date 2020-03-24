@@ -20,7 +20,7 @@ cache_name = "ip_loc_cache.txt"
 
 class Trace:
     def __init__(self):
-        self.ip_locations: Dict[str, Tuple[int, int]] = {}
+        self.ip_locations: Dict[str, Tuple[float, float]] = {}
         self.blacklisted_ips: Set[str] = set()
 
     def read_from_file(self) -> None:
@@ -29,15 +29,15 @@ class Trace:
                 with open(cache_name, 'r') as cache:
                     for line in cache.readlines():
                         ip, lat, lon = line.split(',')
-                        self.ip_locations[ip] = lat, lon
+                        self.ip_locations[ip] = float(lat), float(lon)
             except Exception as e:
                 logging.error(f'Unable to load cache: {e}')
 
     def write_to_file(self) -> None:
         try:
             with open(cache_name, 'w') as cache:
-                for ip, (name, lat, lon) in self.ip_locations.items():
-                    cache.write(f'{ip}, {name}, {lat}, {lon}\n')
+                for ip, (lat, lon) in self.ip_locations.items():
+                    cache.write(f'{ip}, {lat}, {lon}\n')
         except Exception as e:
             logging.error(f'Unable to write to cache: {e}')
 
