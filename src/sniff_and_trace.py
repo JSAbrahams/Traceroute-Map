@@ -10,11 +10,12 @@ from hurry.filesize import size
 update_interval = 5
 
 
-def sniff_and_trace(projection_type: str, timeout: int, duration: int, clean: bool, display_name: bool):
+def sniff_and_trace(projection_type: str, timeout: int, duration: int, clean: bool, display_name: bool,
+                    template: str):
     fig = go.Figure(go.Scattergeo())
     fig.update_geos(projection_type=projection_type, visible=True, resolution=110, showcountries=True,
                     countrycolor="Black")
-    fig.update_layout(margin={'l': 0, 't': 30, 'b': 0, 'r': 0})
+    fig.update_layout(margin={'l': 0, 't': 30, 'b': 0, 'r': 0}, template=template)
 
     sniff_thread = SniffThread(duration)
     sniff_thread.start()

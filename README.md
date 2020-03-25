@@ -22,8 +22,9 @@ We use make use of https://geolocation-db.com/ to get latitude and longitude of 
       -d DURATION, --duration DURATION
                             amount of seconds to track traffic
       -l LOG_LEVEL, --log-level LOG_LEVEL
-                            log level, on of: 'debug', 'info', 'warning', 'error',
+                            log level, one of: 'debug', 'info', 'warning', 'error',
                             'critical'
+      -m MODE, --mode MODE  display mode, one of: 'light', 'dark'
       --display-name        display names of traces
       --clean               clear cache of ip latitudes and longitudes and look
                             them up again
