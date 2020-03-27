@@ -36,7 +36,10 @@ locations in latitude and longitude format.
 Note that all IP's for which we cannot find a location are discarded.
 
 <p align="center"><img src=".github/img/example-capture.png"/></p>
+
 **fig 1** _Example of a traceroute map output. Names of endpoints have been omitted_
 
+<br>
 <p align="center"><img src=".github/img/example-capture-zoomed.png"/></p>
+
 **fig 2** _Zoomed in on Europe_
