@@ -1,4 +1,4 @@
-# Traceroute Map
+# 🌐 Traceroute Map
 
 See the paths all your packets took as your browse the internet at a leisurely pace.
 In addition to the ip addresses, we make use of traceroute to iteratively discover how this packet was (likely) routed
