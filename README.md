@@ -9,8 +9,11 @@ In addition to the ip addresses, we make use of traceroute to iteratively discov
 from you to said server (or vice-versa, depending on how you look at it).
 
 We use make use of https://geolocation-db.com/ to get latitude and longitude of IP addresses.
+These are cached locally so we don't have to keep looking up the same locations.
 
 ## Usage
+
+You can invoke the script with the following arguments:
 
     traceroute_map.py [-h] [-p PROJECTION] [-t TIMEOUT] [-d DURATION]
                          [--clean]
@@ -39,3 +42,13 @@ Aside from the graphical overview, we also output a `*.log` file with all the IP
 locations in latitude and longitude format.
 
 Note that all IP's for which we cannot find a location are discarded.
+
+### Dependencies
+
+Makes use of:
+- geopy v2.1.0
+- scapy v2.4.4
+- plotly v4.14.3
+- pandas v1.2.3
+- pymodbus v2.5.0
+

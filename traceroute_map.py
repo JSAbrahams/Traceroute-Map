@@ -1,5 +1,7 @@
 import argparse
 import logging
+import os
+import sys
 import time
 
 from sniff_and_trace import run
@@ -33,7 +35,11 @@ def main():
                         help='clear cache of ip latitudes and longitudes and look them up again')
 
     args = parser.parse_args()
-    logging.basicConfig(filename=f'{time.strftime("%Y-%m-%d-%H%M%S")}.log', level=log_levels[args.log_level])
+
+    if not os.path.isdir('logs'):
+        os.makedirs('logs')
+    logging.basicConfig(filename=f'logs/{time.strftime("%Y-%m-%d-%H%M%S")}.log', level=log_levels[args.log_level])
+
     run(projection_type=args.projection, timeout=args.timeout, duration=args.duration, clean=args.clean,
         display_name=args.display_name, template=templates[args.mode])
 

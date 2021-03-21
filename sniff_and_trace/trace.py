@@ -14,7 +14,7 @@ from scapy.layers.inet6 import traceroute6
 marker_size = 10
 max_ttl_traceroute = 32
 
-cache_name = "ip_loc_cache.txt"
+cache_name = "/ip_loc_cache.txt"
 
 
 class Trace:
