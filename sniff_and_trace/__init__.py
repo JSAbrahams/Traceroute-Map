@@ -1,17 +1,14 @@
 import time
-from argparse import Namespace
 
 import plotly.graph_objects as go
 
-from src.sniff import SniffThread
-from src.trace import Trace
-from hurry.filesize import size
+from sniff_and_trace.sniff import SniffThread
+from sniff_and_trace.trace import Trace
 
 update_interval = 5
 
 
-def sniff_and_trace(projection_type: str, timeout: int, duration: int, clean: bool, display_name: bool,
-                    template: str):
+def run(projection_type: str, timeout: int, duration: int, clean: bool, display_name: bool, template: str):
     fig = go.Figure(go.Scattergeo())
     fig.update_geos(projection_type=projection_type, visible=True, resolution=110, showcountries=True,
                     countrycolor="Black")
@@ -27,21 +24,21 @@ def sniff_and_trace(projection_type: str, timeout: int, duration: int, clean: bo
         minutes, seconds = divmod(i, 60)
         print(f'Remaining: {minutes:02d}:{seconds:02d} [unique source ips sniffed: {len(sniff_thread.seen_sources):,},'
               f' total: {sniff_thread.sniffed:,},'
-              f' {size(sniff_thread.total_bytes)} ({sniff_thread.total_bytes:,} bytes)]', end='\r')
+              f' {sniff_thread.total_bytes:,} bytes]', end='\r')
         time.sleep(1)
     print('')
 
     count = 1
-    trace = Trace()
+    tracer = Trace()
     if not clean:
-        trace.read_from_file()
+        tracer.read_from_file()
 
     for ip, (hits, byte_count) in sniff_thread.seen_sources.items():
         print(f'Calculating traces...                  [{count}/{len(sniff_thread.seen_sources)}]', end='\r')
-        fig.add_trace(trace.trace(ip, hits, byte_count, timeout, display_name))
+        fig.add_trace(tracer.trace(ip, hits, byte_count, timeout, display_name))
         count += 1
 
-    trace.write_to_file()
+    tracer.write_to_file()
 
     if count > 1:
         print(f'Calculating traces...Done              [{count - 1}/{len(sniff_thread.seen_sources)}]')
@@ -49,6 +46,6 @@ def sniff_and_trace(projection_type: str, timeout: int, duration: int, clean: bo
         print('No traces!')
 
     fig.update_layout(title=f'Traceroute of {count:,} trace{"s" if count > 1 else ""}:'
-                            f'{sniff_thread.total_bytes:,} bytes ({size(sniff_thread.total_bytes)}) '
+                            f'{sniff_thread.total_bytes:,} bytes ({sniff_thread.total_bytes}) '
                             f'during {duration:,} seconds ({total_minutes:02d}:{total_seconds:02d})')
     fig.show()

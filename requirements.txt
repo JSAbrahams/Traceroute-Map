@@ -1,5 +1,5 @@
-geopy==1.21.0
-scapy==2.4.3
-plotly==4.5.3
-pandas==1.0.1
-hurry==1.1
+geopy==2.1.0
+scapy==2.4.4
+plotly==4.14.3
+pandas==1.2.3
+pymodbus==2.5.0

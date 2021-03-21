@@ -10,7 +10,6 @@ from typing import Optional, Tuple, Dict, Set
 import plotly.graph_objects as go
 from scapy.layers.inet import traceroute
 from scapy.layers.inet6 import traceroute6
-from hurry.filesize import size
 
 marker_size = 10
 max_ttl_traceroute = 32
@@ -108,6 +107,6 @@ class Trace:
             name = ''
 
         return go.Scattergeo(mode=mode, lon=lons, lat=lats, text=text,
-                             name=f'{name}{hits} packets, {size(byte_count)} ({byte_count} bytes)',
+                             name=f'{name}{hits} packets, {byte_count} bytes',
                              line={'width': int(math.log(byte_count)) / 2},
                              marker={'size': marker_size, 'symbol': 'square'})

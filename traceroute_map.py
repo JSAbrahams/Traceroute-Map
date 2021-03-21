@@ -2,7 +2,7 @@ import argparse
 import logging
 import time
 
-from src.sniff_and_trace import sniff_and_trace
+from sniff_and_trace import run
 
 log_levels = {
     'debug': logging.DEBUG,
@@ -17,7 +17,8 @@ templates = {
     'dark': 'plotly_dark'
 }
 
-if __name__ == '__main__':
+
+def main():
     parser = argparse.ArgumentParser(description='Map traces')
 
     parser.add_argument('-p', '--projection', type=str, default='equirectangular', help='type of map projection')
@@ -33,5 +34,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     logging.basicConfig(filename=f'{time.strftime("%Y-%m-%d-%H%M%S")}.log', level=log_levels[args.log_level])
-    sniff_and_trace(projection_type=args.projection, timeout=args.timeout, duration=args.duration, clean=args.clean,
-                    display_name=args.display_name, template=templates[args.mode])
+    run(projection_type=args.projection, timeout=args.timeout, duration=args.duration, clean=args.clean,
+        display_name=args.display_name, template=templates[args.mode])
+
+
+if __name__ == '__main__':
+    main()
