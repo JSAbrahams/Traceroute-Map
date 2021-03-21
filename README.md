@@ -1,4 +1,8 @@
-# 🌐 Traceroute Map
+<h1 align="center">
+    <img src=".github/img/simple_map.png" alt="Example output map of script"/>
+    <br/>
+    🌐 Traceroute Map
+</h1>
 
 See the paths all your packets took as your browse the internet at a leisurely pace.
 In addition to the ip addresses, we make use of traceroute to iteratively discover how this packet was (likely) routed
