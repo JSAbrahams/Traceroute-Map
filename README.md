@@ -43,12 +43,12 @@ locations in latitude and longitude format.
 
 Note that all IP's for which we cannot find a location are discarded.
 
-### Dependencies
+## Dependencies
 
 Makes use of:
-- geopy v2.1.0
-- scapy v2.4.4
-- plotly v4.14.3
-- pandas v1.2.3
-- pymodbus v2.5.0
+- `geopy` v2.1.0
+- `scapy` v2.4.4
+- `plotly` v4.14.3
+- `pandas` v1.2.3
+- `pymodbus` v2.5.0
 

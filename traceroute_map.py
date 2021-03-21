@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import sys
 import time
 
 from sniff_and_trace import run
