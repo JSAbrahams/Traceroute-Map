@@ -14,7 +14,7 @@ from scapy.layers.inet6 import traceroute6
 marker_size = 10
 max_ttl_traceroute = 32
 
-cache_name = "ip_loc_cache.txt"
+cache_name = "ip_lat_lon_cache.csv"
 
 
 class Trace:
@@ -26,6 +26,7 @@ class Trace:
         if os.path.exists(cache_name):
             try:
                 with open(cache_name, 'r') as cache:
+                    cache.readline()  # header
                     for line in cache.readlines():
                         ip, lat, lon = line.split(',')
                         self.ip_locations[ip] = float(lat), float(lon)
@@ -35,6 +36,7 @@ class Trace:
     def write_to_file(self) -> None:
         try:
             with open(cache_name, 'w') as cache:
+                cache.write('ip,latitude,longitude\n')
                 for ip, (lat, lon) in self.ip_locations.items():
                     cache.write(f'{ip}, {lat}, {lon}\n')
         except Exception as e:
